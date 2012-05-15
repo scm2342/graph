@@ -149,18 +149,18 @@ module Make
   (* this is f'in expensive...
    * but, the official ocaml graph one applies f to the keys and to all targets
    * that way, if f is not pure, there is imho the potential for total fuckup
-   * also, it is expected that f is bijective since otherwise map again has
+   * also, it is expected that f is surjective since otherwise map again has
    * an effect on edges...
    * the end is nigh - cthulhu is emerging!
    *)
   let map_vertex f ({ fwgraph = fg; bwgraph = bg } as g) =
     let cache = Hashtbl.create (nb_vertex g) in
-    let bijective_checker = ref VSet.empty in
+    let surjective_checker = ref VSet.empty in
     let f_memoized v =
       try Hashtbl.find cache v with Not_found ->
         let res = f v in
-        assert (not (VSet.mem res !bijective_checker));
-        bijective_checker := VSet.add res !bijective_checker;
+        assert (not (VSet.mem res !surjective_checker));
+        surjective_checker := VSet.add res !surjective_checker;
         Hashtbl.add cache v res;
         res
     in
