@@ -2,7 +2,7 @@ open Graph
 
 (* special graph that basecally represents a mixture between adjecency matrices
  * and adjecency lists - this should speed up predecessor operations...
- * also stores an explicit ordering on the vertices
+ * current limitation: only one edge allowed between two nodes
  *)
 (* invariants that must be preserved:
   * The set of vertexes in the graph is equal to the set of keys of fwgraph and
@@ -19,10 +19,9 @@ module Make
   (L : sig
     include Sig.ORDERED_TYPE_DFT
     val pretty : Format.formatter -> t -> unit
-    val join : t -> t -> t
   end)
-(*: Sig.P with type V.t = V.t and type V.label = V.t
-        and type E.t = V.t * L.t * V.t and type E.label = L.t *) = struct
+: Sig.P with type V.t = V.t and type V.label = V.t
+        and type E.t = V.t * L.t * V.t and type E.label = L.t = struct
   module V = struct
     include V
     type label = V.t
@@ -46,6 +45,7 @@ module Make
       compare_bind (compare l1 l2) (fun () ->
                    (compare d1 d2)))
   end
+  module VSet = Set.Make (V)
   module VMap = struct
     include Map.Make (V)
     let merge_with f = merge (fun k a b -> match a, b with
@@ -149,14 +149,20 @@ module Make
   (* this is f'in expensive...
    * but, the official ocaml graph one applies f to the keys and to all targets
    * that way, if f is not pure, there is imho the potential for total fuckup
-   * the end is nigh - cthulu is coming!
+   * also, it is expected that f is bijective since otherwise map again has
+   * an effect on edges...
+   * the end is nigh - cthulhu is emerging!
    *)
   let map_vertex f ({ fwgraph = fg; bwgraph = bg } as g) =
     let cache = Hashtbl.create (nb_vertex g) in
+    let bijective_checker = ref VSet.empty in
     let f_memoized v =
       try Hashtbl.find cache v with Not_found ->
         let res = f v in
-        Hashtbl.add cache v res; res
+        assert (not (VSet.mem res !bijective_checker));
+        bijective_checker := VSet.add res !bijective_checker;
+        Hashtbl.add cache v res;
+        res
     in
     let map_one g = VMap.fold (fun k v accu -> VMap.add (f_memoized k)
       (VMap.fold (fun k v accu -> VMap.add (f_memoized k) v accu) v VMap.empty)
@@ -208,12 +214,13 @@ module Make
         { fwgraph = new_fw
         ; bwgraph = new_bw
         ; edges = edges - f_del_e }
-  let add_edge_e { fwgraph = fg; bwgraph = bg; edges = edges } e =
-    let add_edge_one (g : graph) (s, l, d) : graph =
+  let add_edge_e ({ fwgraph = fg; bwgraph = bg; edges = edges } as g) e =
+    let add_edge_one g (s, l, d) =
       VMap.merge_with
-        (fun a b -> VMap.merge_with L.join a b)
+        (fun a b -> VMap.merge_with (fun _ _ -> assert false) a b)
         (VMap.singleton s (VMap.singleton d l)) g
     in
+    if mem_edge g (E.src e) (E.dst e) then g else
     add_vertex
       { fwgraph = add_edge_one fg e
       ; bwgraph = add_edge_one bg (E.create (E.dst e) (E.label e) (E.src e))
