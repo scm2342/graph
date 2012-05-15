@@ -159,7 +159,8 @@ module Make
     let f_memoized v =
       try Hashtbl.find cache v with Not_found ->
         let res = f v in
-        assert (not (VSet.mem res !surjective_checker));
+        if (VSet.mem res !surjective_checker) then raise (Invalid_argument
+          "Detected non surjective f as argument to map_vertex");
         surjective_checker := VSet.add res !surjective_checker;
         Hashtbl.add cache v res;
         res
