@@ -151,6 +151,8 @@ module Make
    * that way, if f is not pure, there is imho the potential for total fuckup
    * also, it is expected that f is surjective since otherwise map again has
    * an effect on edges...
+   * This is probably not the nicest solution, however my alternative would have
+   * been assert false and that may have fucked up other stuff...
    * the end is nigh - cthulhu is emerging!
    *)
   let map_vertex f ({ fwgraph = fg; bwgraph = bg } as g) =
