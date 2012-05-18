@@ -149,7 +149,7 @@ module Make
   (* this is f'in expensive...
    * but, the official ocaml graph one applies f to the keys and to all targets
    * that way, if f is not pure, there is imho the potential for total fuckup
-   * also, it is expected that f is surjective since otherwise map again has
+   * also, it is expected that f is injective since otherwise map again has
    * an effect on edges...
    * This is probably not the nicest solution, however my alternative would have
    * been assert false and that may have fucked up other stuff...
@@ -157,13 +157,13 @@ module Make
    *)
   let map_vertex f ({ fwgraph = fg; bwgraph = bg } as g) =
     let cache = Hashtbl.create (nb_vertex g) in
-    let surjective_checker = ref VSet.empty in
+    let injective_checker = ref VSet.empty in
     let f_memoized v =
       try Hashtbl.find cache v with Not_found ->
         let res = f v in
-        if (VSet.mem res !surjective_checker) then raise (Invalid_argument
-          "Detected non surjective f as argument to map_vertex");
-        surjective_checker := VSet.add res !surjective_checker;
+        if (VSet.mem res !injective_checker) then raise (Invalid_argument
+          "Detected non injective f as argument to map_vertex");
+        injective_checker := VSet.add res !injective_checker;
         Hashtbl.add cache v res;
         res
     in
